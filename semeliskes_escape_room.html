@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Semeliškių Escape Room</title>
+  <style>
+    :root {
+      --bg: #f5efe4;
+      --paper: #fffaf0;
+      --ink: #243024;
+      --muted: #66705f;
+      --accent: #8b3f2f;
+      --accent-2: #2f6f73;
+      --gold: #d7a23a;
+      --ok: #2f7d4f;
+      --bad: #b33a3a;
+      --shadow: 0 18px 45px rgba(38, 30, 20, 0.16);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 5%, rgba(215, 162, 58, 0.2), transparent 28%),
+        radial-gradient(circle at 85% 15%, rgba(47, 111, 115, 0.16), transparent 30%),
+        linear-gradient(135deg, #f5efe4 0%, #e9dbc4 100%);
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 40px 20px 24px;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.1rem, 5vw, 4.6rem);
+      line-height: 1;
+      letter-spacing: -0.05em;
+    }
+
+    .subtitle {
+      max-width: 760px;
+      margin: 18px auto 0;
+      color: var(--muted);
+      font-size: 1.08rem;
+      line-height: 1.6;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto 60px;
+    }
+
+    .card {
+      background: rgba(255, 250, 240, 0.9);
+      border: 1px solid rgba(36, 48, 36, 0.1);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    .map-wrap {
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .map {
+      position: relative;
+      min-height: 620px;
+      border-radius: 22px;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,0.35) 1px, transparent 1px),
+        linear-gradient(rgba(255,255,255,0.35) 1px, transparent 1px),
+        radial-gradient(circle at 23% 33%, rgba(47, 111, 115, 0.28), transparent 12%),
+        radial-gradient(circle at 74% 72%, rgba(47, 111, 115, 0.22), transparent 16%),
+        linear-gradient(135deg, #d5c69e 0%, #bdd1a7 55%, #9fc6c3 100%);
+      background-size: 42px 42px, 42px 42px, auto, auto, auto;
+      border: 4px solid rgba(255,255,255,0.55);
+    }
+
+    .road {
+      position: absolute;
+      height: 26px;
+      background: rgba(255, 250, 240, 0.68);
+      border: 2px dashed rgba(88, 74, 53, 0.45);
+      transform-origin: left center;
+      border-radius: 999px;
+    }
+
+    .road.r1 { width: 76%; left: 9%; top: 48%; transform: rotate(-8deg); }
+    .road.r2 { width: 65%; left: 25%; top: 27%; transform: rotate(39deg); }
+    .road.r3 { width: 52%; left: 18%; top: 70%; transform: rotate(19deg); }
+    .lake {
+      position: absolute;
+      right: -44px;
+      bottom: -36px;
+      width: 310px;
+      height: 210px;
+      border-radius: 48% 52% 40% 60%;
+      background: radial-gradient(circle at 30% 25%, #d9ffff, #78b9c0 55%, #4d9198 100%);
+      box-shadow: inset 0 0 28px rgba(255,255,255,0.55);
+      opacity: 0.92;
+    }
+
+    .forest {
+      position: absolute;
+      left: -28px;
+      bottom: 15px;
+      width: 250px;
+      height: 190px;
+      border-radius: 42% 58% 50% 50%;
+      background: radial-gradient(circle, rgba(54, 101, 54, 0.82), rgba(50, 99, 57, 0.4) 58%, transparent 70%);
+    }
+
+    .pin {
+      position: absolute;
+      left: var(--x);
+      top: var(--y);
+      transform: translate(-50%, -100%);
+      border: 0;
+      cursor: pointer;
+      background: transparent;
+      padding: 0;
+      z-index: 5;
+    }
+
+    .pin-marker {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 900;
+      background: var(--accent);
+      border: 3px solid #fff5d7;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .pin-marker span { transform: rotate(45deg); }
+    .pin:hover .pin-marker { transform: rotate(-45deg) scale(1.1); background: var(--accent-2); }
+
+    .popup {
+      position: absolute;
+      left: var(--x);
+      top: calc(var(--y) + 10px);
+      transform: translateX(-50%);
+      width: min(330px, calc(100% - 30px));
+      background: #fffdf6;
+      border: 1px solid rgba(36, 48, 36, 0.14);
+      border-radius: 18px;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.2);
+      padding: 16px;
+      z-index: 20;
+      display: none;
+      line-height: 1.45;
+    }
+
+    .popup.show { display: block; }
+    .popup h3 { margin: 0 0 8px; font-size: 1rem; }
+    .popup p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+
+    .side {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .rules h2, .panel h2 { margin: 0 0 10px; font-size: 1.45rem; }
+    .rules p, .panel p { color: var(--muted); line-height: 1.55; margin: 0 0 12px; }
+
+    .form-row { display: grid; gap: 10px; margin: 12px 0; }
+    label { font-weight: 700; font-size: 0.9rem; }
+    input {
+      width: 100%;
+      padding: 13px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(36,48,36,0.18);
+      background: white;
+      font-size: 1rem;
+      outline: none;
+    }
+    input:focus { border-color: var(--accent-2); box-shadow: 0 0 0 4px rgba(47,111,115,0.12); }
+
+    button.primary, button.secondary {
+      border: 0;
+      border-radius: 16px;
+      padding: 14px 18px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+    button.primary { background: var(--accent); color: white; }
+    button.secondary { background: rgba(47,111,115,0.12); color: var(--accent-2); }
+    button:hover { transform: translateY(-1px); filter: brightness(1.04); }
+
+    .game {
+      margin-top: 24px;
+      padding: 26px;
+      display: none;
+    }
+    .game.active { display: block; }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    .timer {
+      font-size: 1.3rem;
+      font-weight: 950;
+      color: var(--accent);
+      background: rgba(139,63,47,0.09);
+      padding: 10px 14px;
+      border-radius: 14px;
+    }
+    .progress { color: var(--muted); font-weight: 800; }
+
+    .question-box {
+      background: white;
+      border-radius: 22px;
+      padding: 24px;
+      border: 1px solid rgba(36,48,36,0.1);
+    }
+    .question-box h2 { margin: 0 0 14px; font-size: clamp(1.4rem, 3vw, 2.25rem); }
+    .question-box p { font-size: 1.12rem; line-height: 1.58; color: var(--ink); }
+    .answer-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; margin-top: 18px; }
+    .message { margin-top: 14px; font-weight: 900; min-height: 1.4em; }
+    .message.ok { color: var(--ok); }
+    .message.bad { color: var(--bad); }
+    .hint {
+      display: none;
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(215,162,58,0.18);
+      border: 1px solid rgba(215,162,58,0.36);
+      font-weight: 800;
+      line-height: 1.5;
+    }
+    .hint.show { display: block; }
+
+    .stats {
+      margin-top: 24px;
+      padding: 24px;
+    }
+    table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 18px; }
+    th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid rgba(36,48,36,0.1); }
+    th { color: var(--muted); font-size: 0.86rem; text-transform: uppercase; letter-spacing: 0.08em; }
+
+    .finish {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      place-items: center;
+      background: rgba(20, 24, 20, 0.52);
+      backdrop-filter: blur(6px);
+      padding: 20px;
+    }
+    .finish.show { display: grid; }
+    .finish-card {
+      width: min(560px, 100%);
+      background: #fffaf0;
+      border-radius: 30px;
+      padding: 32px;
+      text-align: center;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+    }
+    .finish-card h2 { font-size: clamp(2rem, 5vw, 3.4rem); margin: 0 0 12px; }
+    .finish-card p { color: var(--muted); line-height: 1.55; }
+
+    .firework {
+      position: fixed;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 70;
+      animation: boom 900ms ease-out forwards;
+      background: var(--gold);
+      box-shadow:
+        0 -42px 0 #d7a23a,
+        30px -30px 0 #8b3f2f,
+        42px 0 0 #2f6f73,
+        30px 30px 0 #d7a23a,
+        0 42px 0 #8b3f2f,
+        -30px 30px 0 #2f6f73,
+        -42px 0 0 #d7a23a,
+        -30px -30px 0 #8b3f2f;
+    }
+    @keyframes boom { from { transform: scale(0.2); opacity: 1; } to { transform: scale(2.4); opacity: 0; } }
+
+    @media (max-width: 880px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      .map { min-height: 560px; }
+      .answer-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Semeliškių miestelio Escape Room</h1>
+    <p class="subtitle">Atsakyk į klausimus, gauk užuominas, surask objektus miestelyje ir ieškok paslėpto QR kodo su kitu klausimu.</p>
+  </header>
+
+  <main>
+    <section class="hero-grid">
+      <div class="card map-wrap">
+        <div class="map" id="map" aria-label="Semeliškių miestelio schematinis planas">
+          <div class="road r1"></div><div class="road r2"></div><div class="road r3"></div><div class="lake"></div><div class="forest"></div>
+        </div>
+      </div>
+
+      <aside class="card side">
+        <div class="rules">
+          <h2>Žaidimo taisyklės</h2>
+          <p>Pirmiausia apžiūrėk miestelio planą: spustelėk smeigtukus ir perskaityk objektų aprašymus. Kai pradėsi žaidimą, įrašyk atsakymą į klausimą.</p>
+          <p>Teisingas atsakymas atrakins užuominą, kuri nuves prie objekto. Ten surask paslėptą QR kodą su kitu klausimu. Neteisingai? Puslapis paragins bandyti dar kartą.</p>
+          <p>Laikas skaičiuojamas nuo mygtuko „Pradėti žaidimą“ paspaudimo. Finiše geriausias rezultatas pasitinkamas fanfaromis ir fejerverkais.</p>
+        </div>
+
+        <form id="startForm">
+          <div class="form-row">
+            <label for="playerName">Vardas</label>
+            <input id="playerName" name="playerName" required placeholder="Pvz., Austėja" autocomplete="given-name" />
+          </div>
+          <div class="form-row">
+            <label for="playerEmail">El. paštas</label>
+            <input id="playerEmail" name="playerEmail" type="email" required placeholder="vardas@example.com" autocomplete="email" />
+          </div>
+          <button class="primary" type="submit">Pradėti žaidimą</button>
+        </form>
+      </aside>
+    </section>
+
+    <section id="game" class="card game" aria-live="polite">
+      <div class="topbar">
+        <div class="progress" id="progress">Klausimas 1 / 9</div>
+        <div class="timer" id="timer">00:00</div>
+      </div>
+      <div class="question-box">
+        <h2 id="questionTitle">Klausimas</h2>
+        <p id="questionText"></p>
+        <div class="answer-row">
+          <input id="answer" placeholder="Įrašyk atsakymą..." autocomplete="off" />
+          <button class="primary" id="checkBtn">Tikrinti</button>
+        </div>
+        <div class="message" id="message"></div>
+        <div class="hint" id="hint"></div>
+        <button class="secondary" id="nextBtn" style="display:none; margin-top:16px;">Radau QR kodą, rodyti kitą klausimą</button>
+      </div>
+    </section>
+
+    <section class="card stats">
+      <div class="panel">
+        <h2>Žaidėjų statistika</h2>
+        <p>Rodomi tik nuasmeninti el. paštai ir vardo pirmoji raidė. Duomenys saugomi šiame įrenginyje naudojant naršyklės atmintį.</p>
+      </div>
+      <table>
+        <thead><tr><th>Vardas</th><th>El. paštas</th><th>Laikas</th><th>Data</th></tr></thead>
+        <tbody id="statsBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <div id="finish" class="finish">
+    <div class="finish-card">
+      <h2 id="finishTitle">Sveikiname!</h2>
+      <p id="finishText"></p>
+      <button class="primary" id="closeFinish">Uždaryti</button>
+    </div>
+  </div>
+
+  <script>
+    const objects = [
+      {
+        name: 'Semeliškių Šv. Lauryno bažnyčia', x: '40%', y: '33%',
+        description: 'Ne šiaip bažnyčia, o tikras miestelio senbuvis, stovintis nuo XVIII amžiaus. Kukli iš išorės, rami viduje ir pilna žmonių gyvenimo istorijų.',
+        question: 'Kuris Semeliškių objektas aprašyme vadinamas miestelio „senbuviu“ ir stovi nuo XVIII amžiaus?',
+        answers: ['sv lauryno baznycia', 'šv lauryno bažnyčia', 'semeliskiu sv lauryno baznycia', 'semeliškių šv. lauryno bažnyčia', 'lauryno baznycia'],
+        hint: 'Ieškok ten, kur viduje mintys persijungia į tylų režimą, o miestelio istorija skamba nuo XVIII amžiaus.'
+      },
+      {
+        name: 'Semeliškių varpinė', x: '48%', y: '37%',
+        description: 'Miestelio garso bokštas ir senovinis push notification centras. Kai skambėdavo varpai, visi žinodavo, kad kažkas vyksta.',
+        question: 'Koks objektas buvo senovinis Semeliškių „push notification centras“?',
+        answers: ['varpine', 'varpinė', 'semeliskiu varpine', 'semeliškių varpinė'],
+        hint: 'Eik prie miestelio garso bokšto – ten, kur varpai kadaise pranešdavo visas svarbiausias naujienas.'
+      },
+      {
+        name: 'Nestrėvantis ežeras', x: '82%', y: '77%',
+        description: 'Gamtos reset mygtukas, rami vieta maudynėms, žvejybai ir vakariniam saulėlydžiui virš vandens.',
+        question: 'Kuris Semeliškių gamtos objektas aprašytas kaip „reset mygtukas“?',
+        answers: ['nestrevantis ezeras', 'nestrėvantis ežeras', 'ezeras nestrevantis', 'ežeras nestrėvantis'],
+        hint: 'Judėk ten, kur gamta sako „atsipalaiduok“ – prie vandens ir ramybės režimo.'
+      },
+      {
+        name: 'Semeliškių gaisrinė', x: '31%', y: '58%',
+        description: 'Superherojų bazė be apsiaustų, bet su žarnomis, sirenomis ir daug drąsos.',
+        question: 'Kur Semeliškėse prasideda veiksmo filmas, kai pasigirsta sirenos?',
+        answers: ['gaisrine', 'gaisrinė', 'semeliskiu gaisrine', 'semeliškių gaisrinė'],
+        hint: 'Ieškok superherojų bazės be apsiaustų – ten, kur kažkam pasidaro tikrai karšta.'
+      },
+      {
+        name: 'Semeliškių žydų kapinės', x: '18%', y: '78%',
+        description: 'Vieta, kur miškas saugo istoriją. Tarp samanų ir medžių pasislėpę seni antkapiai tyliai pasakoja apie žydų bendruomenę.',
+        question: 'Kuris objektas apibūdintas kaip vieta, kur miškas saugo istoriją geriau nei senas archyvas?',
+        answers: ['zydu kapines', 'žydų kapinės', 'semeliskiu zydu kapines', 'semeliškių žydų kapinės'],
+        hint: 'Eik į tylią vietą prie miško, kur seni akmenys kalba tyliai, bet labai stipriai.'
+      },
+      {
+        name: 'Vaikų darželis „Gandriukas“', x: '62%', y: '56%',
+        description: 'Vieta, kur kasdien vyksta rimti vaikų reikalai: piešiniai, žaidimai, juokas ir kartais blizgučiai kišenėse.',
+        question: 'Kaip vadinasi Semeliškių vaikų darželis?',
+        answers: ['gandriukas', 'vaiku darzelis gandriukas', 'vaikų darželis gandriukas', 'semeliskiu vaiku darzelis gandriukas'],
+        hint: 'Ieškok pastato, kuriame telpa tiek vaikų energijos, kad užtektų visam miestui.'
+      },
+      {
+        name: 'Skulptūra Semeliškių aikštėje', x: '56%', y: '43%',
+        description: 'Tylus miestelio NPC prie aikštės, matęs daug gyvenimo ir primenantis, kad istorija gyvena ne tik knygose.',
+        question: 'Koks objektas aprašytas kaip tylus miestelio „NPC“?',
+        answers: ['skulptura', 'skulptūra', 'skulptura aiksteje', 'skulptūra aikštėje', 'semeliskiu aikstes skulptura'],
+        hint: 'Ieškok aikštėje stovinčio tylaus miestelio veikėjo, kuris visada vietoje, bet daug matė.'
+      },
+      {
+        name: 'Semeliškių Šv. Nikolajaus Stebukladario cerkvė', x: '60%', y: '36%',
+        description: 'XIX amžiaus miestelio veteranė su ikonų ir spalvų atmosfera, kur viskas sulėtėja.',
+        question: 'Kuri Semeliškių šventovė pastatyta XIX amžiuje ir aprašyta kaip miestelio „veteranas“?',
+        answers: ['sv nikolajaus cerkve', 'šv nikolajaus cerkvė', 'semeliskiu sv nikolajaus stebukladario cerkve', 'semeliškių šv. nikolajaus stebukladario cerkvė', 'cerkve', 'cerkvė'],
+        hint: 'Eik ten, kur ikonų spalvos primena senovinį Instagram be filtrų, o laikas sulėtėja.'
+      },
+      {
+        name: 'Semeliškių gimnazija', x: '70%', y: '25%',
+        description: 'Vieta, kur užauga pažymiai ir istorijos. Čia naujienos per pertraukas sklinda greičiau nei elektroniniame dienyne.',
+        question: 'Kur Semeliškėse kontrolinis kartais paaiškėja buvęs „šiandien, o ne kitą savaitę“?',
+        answers: ['gimnazija', 'semeliskiu gimnazija', 'semeliškių gimnazija'],
+        hint: 'Ieškok vietos su kuprinėmis, pamokomis ir legendinėmis pertraukomis.'
+      }
+    ];
+
+    const map = document.getElementById('map');
+    objects.forEach((obj, i) => {
+      const pin = document.createElement('button');
+      pin.className = 'pin';
+      pin.style.setProperty('--x', obj.x);
+      pin.style.setProperty('--y', obj.y);
+      pin.setAttribute('aria-label', obj.name);
+      pin.innerHTML = `<div class="pin-marker"><span>${i + 1}</span></div>`;
+
+      const popup = document.createElement('div');
+      popup.className = 'popup';
+      popup.style.setProperty('--x', obj.x);
+      popup.style.setProperty('--y', obj.y);
+      popup.innerHTML = `<h3>${obj.name}</h3><p>${obj.description}</p>`;
+
+      pin.addEventListener('click', () => {
+        document.querySelectorAll('.popup').forEach(p => p.classList.remove('show'));
+        popup.classList.add('show');
+      });
+
+      map.appendChild(pin);
+      map.appendChild(popup);
+    });
+
+    let current = 0;
+    let player = null;
+    let startedAt = null;
+    let timerId = null;
+    let lastElapsed = 0;
+
+    const startForm = document.getElementById('startForm');
+    const game = document.getElementById('game');
+    const progress = document.getElementById('progress');
+    const timer = document.getElementById('timer');
+    const questionText = document.getElementById('questionText');
+    const questionTitle = document.getElementById('questionTitle');
+    const answer = document.getElementById('answer');
+    const checkBtn = document.getElementById('checkBtn');
+    const message = document.getElementById('message');
+    const hint = document.getElementById('hint');
+    const nextBtn = document.getElementById('nextBtn');
+    const statsBody = document.getElementById('statsBody');
+    const finish = document.getElementById('finish');
+    const finishTitle = document.getElementById('finishTitle');
+    const finishText = document.getElementById('finishText');
+
+    function normalize(text) {
+      return text.toLowerCase().trim().replace(/[ąčęėįšųūž]/g, ch => ({ą:'a',č:'c',ę:'e',ė:'e',į:'i',š:'s',ų:'u',ū:'u',ž:'z'}[ch])).replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ');
+    }
+
+    function formatTime(ms) {
+      const total = Math.floor(ms / 1000);
+      const min = String(Math.floor(total / 60)).padStart(2, '0');
+      const sec = String(total % 60).padStart(2, '0');
+      return `${min}:${sec}`;
+    }
+
+    function anonymizeEmail(email) {
+      const [name, domain = ''] = email.split('@');
+      const first = name.charAt(0) || '*';
+      const domainParts = domain.split('.');
+      const domainName = domainParts[0] || 'mail';
+      const ending = domainParts.length > 1 ? '.' + domainParts.at(-1) : '';
+      return `${first}***@${domainName.charAt(0)}***${ending}`;
+    }
+
+    function renderQuestion() {
+      const obj = objects[current];
+      progress.textContent = `Klausimas ${current + 1} / ${objects.length}`;
+      questionTitle.textContent = `Klausimas ${current + 1}`;
+      questionText.textContent = obj.question;
+      answer.value = '';
+      answer.disabled = false;
+      checkBtn.disabled = false;
+      message.textContent = '';
+      message.className = 'message';
+      hint.textContent = '';
+      hint.className = 'hint';
+      nextBtn.style.display = 'none';
+      answer.focus();
+    }
+
+    function startTimer() {
+      startedAt = Date.now();
+      timerId = setInterval(() => {
+        lastElapsed = Date.now() - startedAt;
+        timer.textContent = formatTime(lastElapsed);
+      }, 300);
+    }
+
+    function loadStats() {
+      return JSON.parse(localStorage.getItem('semeliskesEscapeStats') || '[]');
+    }
+
+    function saveStats(stats) {
+      localStorage.setItem('semeliskesEscapeStats', JSON.stringify(stats));
+    }
+
+    function renderStats() {
+      const stats = loadStats().sort((a, b) => a.ms - b.ms);
+      statsBody.innerHTML = stats.length ? '' : '<tr><td colspan="4">Rezultatų dar nėra.</td></tr>';
+      stats.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${row.initial}.</td><td>${row.email}</td><td>${formatTime(row.ms)}</td><td>${row.date}</td>`;
+        statsBody.appendChild(tr);
+      });
+    }
+
+    function playFanfare() {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const notes = [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5];
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.16);
+        gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + i * 0.16 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.16 + 0.28);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.16);
+        osc.stop(ctx.currentTime + i * 0.16 + 0.3);
+      });
+    }
+
+    function fireworks() {
+      for (let i = 0; i < 18; i++) {
+        setTimeout(() => {
+          const fw = document.createElement('div');
+          fw.className = 'firework';
+          fw.style.left = `${15 + Math.random() * 70}%`;
+          fw.style.top = `${12 + Math.random() * 55}%`;
+          document.body.appendChild(fw);
+          setTimeout(() => fw.remove(), 950);
+        }, i * 120);
+      }
+    }
+
+    function finishGame() {
+      clearInterval(timerId);
+      lastElapsed = Date.now() - startedAt;
+      const stats = loadStats();
+      const previousBest = stats.length ? Math.min(...stats.map(s => s.ms)) : Infinity;
+      const isBest = lastElapsed < previousBest;
+      const result = {
+        initial: player.name.trim().charAt(0).toUpperCase(),
+        email: anonymizeEmail(player.email.trim()),
+        ms: lastElapsed,
+        date: new Date().toLocaleDateString('lt-LT')
+      };
+      stats.push(result);
+      saveStats(stats);
+      renderStats();
+
+      finishTitle.textContent = isBest ? 'Naujas rekordas!' : 'Misija įvykdyta!';
+      finishText.textContent = `Tavo laikas: ${formatTime(lastElapsed)}. ${isBest ? 'Fanfaros ir fejerverkai – geriausias rezultatas!' : 'Puikiai įveikei Semeliškių maršrutą.'}`;
+      finish.classList.add('show');
+      if (isBest) { playFanfare(); fireworks(); }
+    }
+
+    startForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      player = {
+        name: document.getElementById('playerName').value,
+        email: document.getElementById('playerEmail').value
+      };
+      current = 0;
+      game.classList.add('active');
+      game.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      clearInterval(timerId);
+      timer.textContent = '00:00';
+      startTimer();
+      renderQuestion();
+    });
+
+    checkBtn.addEventListener('click', () => {
+      const obj = objects[current];
+      const guess = normalize(answer.value);
+      const correct = obj.answers.map(normalize).includes(guess);
+      if (!correct) {
+        message.textContent = 'Bandyk dar kartą.';
+        message.className = 'message bad';
+        hint.className = 'hint';
+        return;
+      }
+      message.textContent = 'Teisingai! Štai užuomina į objektą.';
+      message.className = 'message ok';
+      hint.textContent = obj.hint;
+      hint.className = 'hint show';
+      answer.disabled = true;
+      checkBtn.disabled = true;
+      nextBtn.textContent = current === objects.length - 1 ? 'Baigti žaidimą' : 'Radau QR kodą, rodyti kitą klausimą';
+      nextBtn.style.display = 'inline-block';
+    });
+
+    answer.addEventListener('keydown', event => {
+      if (event.key === 'Enter') checkBtn.click();
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (current === objects.length - 1) return finishGame();
+      current += 1;
+      renderQuestion();
+    });
+
+    document.getElementById('closeFinish').addEventListener('click', () => finish.classList.remove('show'));
+    renderStats();
+  </script>
+</body>
+</html>
