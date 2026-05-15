@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escape Room: Semeliškių paslaptys</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{--green:#087236;--gold:#f2c14e;--ink:#172016;--card:rgba(255,255,255,.94)}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;background:linear-gradient(110deg,rgba(255,255,255,.92),rgba(255,255,255,.70)),url("assets/bg.png") center/cover fixed;color:var(--ink)}
+header{position:sticky;top:0;z-index:999;background:rgba(255,255,255,.9);backdrop-filter:blur(12px);box-shadow:0 8px 28px #0001}
+.wrap{width:min(1240px,94vw);margin:auto}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:10px 0;gap:12px}
+.brand{display:flex;align-items:center;gap:12px;font-weight:900;color:var(--green)}
+.brand img{width:44px;height:54px;object-fit:contain}
+.timer{font-weight:900;background:var(--green);color:white;padding:10px 14px;border-radius:999px}
+.section{padding:24px 0}
+.card{background:var(--card);border-radius:28px;padding:24px;box-shadow:0 20px 60px #0002;border:1px solid #fff}
+h1{font-size:clamp(2rem,5.5vw,5rem);line-height:.92;margin:10px 0;color:var(--green)}
+h2{margin:0 0 12px;color:var(--green)}
+p{line-height:1.55}
+.lead{font-size:1.08rem}
+.btn{border:0;border-radius:16px;padding:13px 17px;font-weight:900;cursor:pointer;background:var(--green);color:white;box-shadow:0 10px 24px #0002;text-decoration:none;display:inline-block}
+.btn.alt{background:white;color:var(--green);border:2px solid var(--green)}
+.btn.gold{background:var(--gold);color:#2b2207}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+#mainMap{height:720px;border-radius:22px;overflow:hidden}
+.grid{display:grid;grid-template-columns:1fr;gap:24px}
+input{width:100%;padding:13px 14px;border-radius:14px;border:1px solid #ccd5cc;font:inherit;margin:6px 0 12px}
+label{font-weight:800}
+.hidden{display:none!important}
+.pill{display:inline-block;background:#e7f4eb;color:var(--green);font-weight:900;border-radius:999px;padding:8px 11px;margin:3px}
+.question{font-size:1.35rem;font-weight:900;margin:12px 0}
+.hint{background:#fff8df;border:2px dashed var(--gold);border-radius:20px;padding:20px;margin-top:16px;white-space:pre-line;font-size:1.28rem;line-height:1.55;font-weight:850}
+.qrbox{background:#edf7ff;border:2px solid #b6dfff;border-radius:20px;padding:18px;margin-top:14px}
+.qrbox.active-object{border:4px solid var(--green);background:#f1fff5}
+.big{font-size:1.35rem;font-weight:900;color:var(--green)}
+.place-photo{width:100%;max-height:280px;object-fit:cover;border-radius:14px;margin:10px 0 12px;display:block}
+.qr-photo{width:100%;max-height:360px;object-fit:cover;border-radius:18px;margin:12px 0 14px;display:block}
+.desc{white-space:pre-line;font-size:1rem;line-height:1.58}
+.leaflet-popup-content{width:360px!important;max-width:420px}
+.leaflet-popup-content-wrapper{border-radius:18px}
+.leaflet-popup-content b{font-size:1.08rem;color:#087236;display:block;margin-bottom:4px}
+.player-dot{background:#0b1bff;border:3px solid white;border-radius:50%;width:18px;height:18px;box-shadow:0 0 0 4px rgba(11,27,255,.25)}
+.stats table{width:100%;border-collapse:collapse;background:white;border-radius:16px;overflow:hidden}
+th,td{padding:10px;border-bottom:1px solid #eee;text-align:left}
+.scanner-modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px}
+.scanner-card{background:white;border-radius:24px;padding:18px;width:min(520px,94vw);box-shadow:0 20px 80px #0008}
+.scanner-box{width:100%;min-height:300px;border-radius:16px;overflow:hidden;background:#111}
+.scanner-help{font-size:.95rem;color:#333}
+.manual-code{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.manual-code input{flex:1;min-width:180px;margin:0}
+.error-note{background:#fff0f0;border:1px solid #ffc9c9;color:#8a1616;border-radius:14px;padding:10px;margin-top:10px}
+.certificate{background:white;border:8px double var(--green);padding:18px;border-radius:20px;text-align:center}
+.cert-wrap{max-width:1100px;margin:auto}
+.cert-svg{width:100%;height:auto;border-radius:14px;box-shadow:0 14px 34px #0002;background:white}
+.download-row{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:9999}
+.confetti span{position:absolute;top:-20px;font-size:28px;animation:fall 2.8s linear forwards}
+@keyframes fall{to{transform:translateY(105vh) rotate(720deg);opacity:.25}}
+@media(max-width:850px){#mainMap{height:540px}.card{padding:18px}.leaflet-popup-content{width:280px!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap nav">
+    <div class="brand"><img src="assets/herbas.gif" alt="Semeliškių herbas"><span>Escape Room: Semeliškių paslaptys</span></div>
+    <div class="timer" id="timer">00:00</div>
+  </div>
+</header>
+<main>
+<section class="wrap section" id="introBlock">
+  <div class="card">
+    <h2>„Escape Room: Semeliškių paslaptys“</h2>
+    <p>Ar esi pasiruošęs tapti tikru Semeliškių paslapčių medžiotoju? 😎 Tavo laukia ne paprastas pasivaikščiojimas, o nuotykis pilnas QR kodų, užuominų, keistų ženklų ir istorijų, kurias slepia miestelio gatvės. 🗺️ Čia akmenys kalba, pastatai saugo paslaptis, o kulgrinda primena senovinį „slaptą lygį“. 👀 Kiekviena stotelė ves prie naujos užduoties, o tik sumaniausiems pavyks atrakinti galutinį kodą! 🔐 📍 Tyrinėk. 🧩 Spręsk. 😂 Juokis. 🏆 Ir atrask Semeliškes visai kitu kampu!</p>
+  </div>
+</section>
+<section class="wrap section" id="titleBlock">
+  <div class="card">
+    <h1>Semeliškių paslaptys</h1>
+    <p class="lead">QR kodų žaidimas po miestelį. Tyrinėk Semeliškes, spręsk klausimus, rask stoteles ir atrakink finalą.</p>
+    <div class="row"><a class="btn" href="#start">Pradėti</a><a class="btn alt" href="#mainMap">Pažinti miestelį</a></div>
+  </div>
+</section>
+<section class="wrap section" id="flowBlock">
+  <div class="card">
+    <h2>Žaidimo eiga</h2>
+    <p>Atsakęs/-iusi teisingai į klausimą gausi užuominą kur ieškoti QR kodo. Kai rasi ir nuskaitysi QR kodą, susipažinsi su objektu, kuriame esi. Tada gausi vėl klausimą, į kurį atsakęs/-iusi gausi sekančią užuominą ir t.t. Jau kai bus nepakeliamai sunku, gali pasinaudoti pagalba - žemėlapiu. SĖKMĖS, čempione!</p>
+  </div>
+</section>
+<section class="wrap section" id="start">
+  <div class="card" id="registerSection">
+    <h2>Registracija</h2>
+    <form id="startForm">
+      <label>Vardas<input id="playerName" required placeholder="Pvz., Rūta"></label>
+      <label>El. paštas<input id="playerEmail" type="email" required placeholder="vardas@email.lt"></label>
+      <button class="btn gold" type="submit">Pradėti</button>
+    </form>
+    <p>Statistikoje rodoma tik vardo pirmoji raidė ir nuasmenintas el. paštas. Sertifikatas sugeneruojamas pabaigoje.</p>
+  </div>
+</section>
+<section class="wrap section" id="mapSection">
+  <div class="card">
+    <h2>Semeliškių žemėlapis</h2>
+    <p>Pradėjus žaidimą, šiame žemėlapyje matysi ir savo buvimo vietą.</p>
+    <div id="mainMap"></div>
+  </div>
+</section>
+<section class="wrap section hidden" id="game">
+  <div class="card">
+    <span class="pill" id="playerLabel"></span><span class="pill" id="stageLabel"></span>
+    <div class="grid" style="margin-top:16px">
+      <div>
+        <h2 id="gameTitle">Klausimas</h2>
+        <div class="question" id="question"></div>
+        <input id="answer" placeholder="Įrašyk atsakymą...">
+        <div class="row"><button class="btn" id="checkBtn" type="button">Tikrinti</button><button class="btn gold hidden" id="scanBtn" type="button">Skenuoti QR kodą</button></div>
+        <div id="feedback"></div>
+        <div class="hint hidden" id="hintBox"></div>
+        <div class="qrbox hidden" id="qrBox"></div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="wrap section" id="statsSection">
+  <div class="card stats">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h2>Žaidėjų statistika</h2>
+      <button class="btn alt" id="toggleStatsBtn" type="button">Rodyti statistiką</button>
+    </div>
+    <div id="statsWrap" class="hidden"><div id="stats"></div></div>
+  </div>
+</section>
+<div id="scannerModal" class="scanner-modal hidden">
+  <div class="scanner-card">
+    <h2>Skenuok QR kodą</h2>
+    <p class="scanner-help">Leisk naršyklei naudoti kamerą ir nukreipk ją į stotelės QR kodą. Kamera veikia per HTTPS.</p>
+    <div id="qrReader" class="scanner-box"></div>
+    <div id="scanError" class="error-note hidden"></div>
+    <div class="manual-code">
+      <input id="manualQrCode" placeholder="Jei kamera neveikia, įrašyk kodą, pvz. SEM-1">
+      <button class="btn alt" id="manualQrBtn" type="button">Patvirtinti</button>
+    </div>
+    <div class="row"><button class="btn" id="closeScannerBtn" type="button">Uždaryti</button></div>
+  </div>
+</div>
+</main>
+<script>
+const PLACES=[{"title": "Semeliškių Šv. Lauryno bažnyčia", "lat": 54.66664608886986, "lng": 24.652132991615094, "img": "assets/baznycia.jpg", "desc": "Stovi čia jau nuo XVIII amžiaus, todėl jei sienos mokėtų kalbėti, būtų rimtas konkurentas „Netflix“ serialams. Iš išorės – kukli, be didelio pasipuikavimo, bet su tokiu charakteriu, kur net tyliai būdama palieka įspūdį."}, {"title": "Semeliškių varpinė", "lat": 54.66677658735174, "lng": 24.652381179036897, "img": "assets/varpine.jpg", "desc": "Nedidelė, bet su rimtu „balsu“. 😄\nJoje kabo vienas seniausių varpų Lietuvoje – skaičiuojantis tiek metų, kad tikriausiai girdėjo dar arklių kanopas vietoj automobilių. 🔔\nKai jis skamba, atrodo, lyg pati istorija sakytų: „Nu ką, vaikai, ramiau.“ 😄"}, {"title": "Klubas", "lat": 54.66727203198255, "lng": 24.652007448810814, "img": "assets/klubas.jpg", "desc": "„Senieji semeliškiečių „klubo“ namai matė daugiau istorijų nei bet kuris miestelio telefonas. 📖\nŠis pastatas išgyveno karą, gaisrą ir laiką – tikras Semeliškių bosas!\nSakoma, jei jo sienos prabiltų, pasakotų istorijas iki pat ryto… 🌙“"}, {"title": "Vandens malūnas", "lat": 54.66856752832875, "lng": 24.65351788157998, "img": "assets/malunas.jpg", "desc": "Semeliškių vandens malūnas – buvęs grūdų malūnas Semeliškėse, kuris veikė naudojant vandens energiją.\nŠiandien Semeliškių malūnas išlikęs kaip istorinis objektas ir senosios technikos paveldo dalis."}, {"title": "Kulgrinda. Semeliškių „Briukas“", "lat": 54.66772012952252, "lng": 24.65698950930689, "img": "assets/kulgrinda.jpg", "desc": "Semeliškių „Briukas“ (Akmenų grindinys)\nKas tai? Tarpukario gamybos natūralus vibrostendas J. Basanavičiaus gatvėje.\nSupergalia: Nemokamas stuburo masažas visiems vairuotojams ir dviratininkams.\nIstorinė magija: Akmenys mena 1935 metus ir saugo miestelį nuo asfalto bei greičio mėgėjų.\nŽaidimo taisyklė: Važiuoji lėtai – grožiesi paveldu. Važiuoji greitai – renki išbyrėjusias automobilio detales."}, {"title": "Semeliškių gimnazija", "lat": 54.66640739911694, "lng": 24.65789043624843, "img": "assets/gimnazija.jpg", "desc": "Čia telpa visas mokyklinis gyvenimas: nuo rimtų pamokų iki legendinių pertraukų, kuriose naujienos sklinda greičiau nei mokytojų elektroniniame dienyne.\nMokykla maža, bet su charakteriu – visi vieni kitus pažįsta, todėl pabėgti nuo „o kodėl be namų darbų?“ beveik neįmanoma."}, {"title": "Semeliškių Šv. Nikolajaus Stebukladario cerkvė", "lat": 54.66723554399799, "lng": 24.65759396856863, "img": "assets/cerkve.jpg", "desc": "Vieta, kur net telefonas atrodo supranta, kad metas persijungti į „tylos režimą“. ⛪\nIš išorės kukli, bet viduje – ikonų ir spalvų atmosfera, kuri atrodo lyg senovinis „Instagram“, tik be filtrų ir reklamų. Pastatyta dar XIX amžiuje, ji ramiai išstovėjo per karus, imperijas ir visą istorijos chaosą – tikras miestelio „veteranas“."}, {"title": "Semeliškių monumentas", "lat": 54.666841029002704, "lng": 24.65793801357557, "img": "assets/monumentas.jpg", "desc": "Ne šiaip akmuo aikštėje. Čia tarsi miestelio „atminties USB“ – saugo prisiminimus apie tuos, kurie čia gyveno, gyvena ir dar gyvens. Sakoma, kad monumentas liudija žmonių bendrystę ir meilę savo kraštui. Kitaip tariant – Semeliškės turi savo „level up“ ženklą! 😄"}, {"title": "Nestrėvantis ežeras", "lat": 54.65787201466609, "lng": 24.668248061811997, "img": "assets/nestrevantis.jpg", "desc": "Toks gamtos „reset mygtukas“ Semeliškėse. 🌊 Ramus, apsuptas miškų ir be miestelio triukšmo – ideali vieta prasivėdinti galvą ar tiesiog pabūti „offline“. Vasarą čia vyksta klasika: maudynės, žvejyba ir chill’as ant kranto."}, {"title": "Semeliškių gaisrinė", "lat": 54.66338241117972, "lng": 24.66768318136801, "img": "assets/gaisrine.jpg", "desc": "Iš pirmo žvilgsnio – rami stotis, bet kai pasigirsta sirenos, prasideda miestelio veiksmo filmas. Čia dirba tie, kurie ne tik gesina gaisrus, bet ir gelbsti greičiau nei spėji parašyti „help“. Semeliškių superherojų bazė be apsiaustų, bet su žarnomis ir daug drąsos."}, {"title": "Semeliškių vaikų darželis „Gandriukas“", "lat": 54.6675552842944, "lng": 24.65971433831955, "img": "assets/darzelis.jpg", "desc": "Vieta, kur mažieji semiasi žinių, draugų ir kartais… blizgučių pilnų kišenių. 🧸Čia kasdien vyksta rimti vaikų reikalai: piešimo šedevrai, lenktynės koridoriuje ir diskusijos, kas šiandien bus žaidimų virtuvės šefas. O auklėtojos turi daugiau kantrybės nei telefono baterija taupymo režime."}, {"title": "Semeliškių žydų kapinės", "lat": 54.671612518837364, "lng": 24.673698158579896, "img": "assets/zydu-kapines.jpg", "desc": "Tokia vieta, kur miškas saugo istoriją geriau nei senas archyvas. 🌲 Tarp samanų ir medžių pasislėpę seni antkapiai atrodo lyg sustabdę laiką – tylūs, bet pasakojantys labai daug."}, {"title": "Semeliškių seniūnija", "lat": 54.66428123170719, "lng": 24.662983036573497, "img": "assets/seniunija.jpg", "desc": "Semeliškių seniūnija – vieta, kur sprendžiami rimti miestelio reikalai, bet visi vis tiek vieni kitus pažįsta. 🏡\nČia gimsta idėjos šventėms, tvarkomi svarbūs dokumentai ir kartais net greičiau sužinomos miestelio naujienos nei internete. 😄\nSemeliškių „valdymo centras“, kuriame miestelio gyvenimas niekada nestovi vietoje."}];
+const QUESTIONS_SOURCE=[{"q": "Miestelio gyventojai, kuriame randiesi, vadinami....", "a": ["semeliškiečiais", "semeliskieciais"]}, {"q": "Kiek Semeliškėms metų?", "a": ["750"]}, {"q": "Kelintais metais Semeliškės tapo mažąja Lietuvos kultūros sostine?", "a": ["2026"]}, {"q": "Koks NETFLIX žinomas serialas buvo filmuojamas Semeliškėse?", "a": ["stranger things", "strangerthings"]}, {"q": "2026 metais dešimtokas Rokas išgarsėjo Semeliškėse pastatydamas didžiausią....", "a": ["sniego senį", "sniego seni", "besmegenį", "besmegeni"]}, {"q": "Kokia upė teka per Semeliškes?", "a": ["strėva", "streva"]}, {"q": "Kaip vietiniai gyventojai tradiciškai vadina senąjį akmenų grindinį J. Basanavičiaus gatvėje?", "a": ["briuku", "briukas"]}, {"q": "Koks animacinio filmo „Ledo šalis“ personažas įkvėpė dešimtoką Roką pastatyti rekordinį sniego senį?", "a": ["olafas", "olaf"]}, {"q": "Semeliškėse stovi viena seniausių medinių bažnyčių Lietuvoje. Kokiu vardu ji pavadinta?", "a": ["šv. lauryno", "sv lauryno", "šv lauryno", "sv. lauryno", "šv. lauryno bažnyčia", "sv lauryno baznycia"]}, {"q": "Koks istorinis statinys, stovintis prie Strėvos upės, XX a. pradžioje malė grūdus, o šiandien yra technikos paveldas?", "a": ["vandens malūnas", "vandens malunas", "malūnas", "malunas"]}, {"q": "Kaip vadinasi garsusis kasmetinis Semeliškių festivalis, vykstantis rugpjūčio mėnesį?", "a": ["nuo lauryno iki roko"]}];
+const HINTS=["Viduje – ramybė, kur net mintys automatiškai persijungia į „tylų režimą“. O svarbiausia, čia tilpo visas žmonių gyvenimas: krikštynos, vestuvės, atsisveikinimai ir šimtai istorijų.", "Virš miestelio tyliai kabo, laiką skaičiuoja be laikrodžio. Kai prabyla – visi girdi, o gyvena aukštai bokšte.", "Šios sienos – tikros Semeliškių pleputės. Jos matė žmones, šventes, koncertus, apdovanojimus, rūpesčius ir bendruomenės istorijas.", "Prie vandens tyliai stovi, senas paslaptis dar saugo. Ne žmonės jį, o upė suko, o viduje girnos dūzgė tyliai.", "Nori skenuoti toliau? Ieškok vietos, kur Semeliškėse baigiasi lygus kelias ir prasideda nemokamas stuburo masažas.", "Vieta, kur vieni ateina mokytis, o kiti supranta, kad kontrolinis buvo „šiandien, o ne kitą savaitę“. Kodą rasi, kur galima gaiviai atsigerti vandenėlio.", "Iš išorės kukli, bet viduje – ikonų ir spalvų atmosfera, kuri atrodo lyg senovinis „Instagram“, tik be filtrų ir reklamų.", "FINIŠAS! Semeliškių akmuo ne šiaip sau čia stovi. Jis – miestelio atminties sargas!"];
+const QR_CODES=["SEM-1","SEM-2","SEM-3","SEM-4","SEM-5","SEM-6","SEM-7","SEM-8"];
+const stationTexts=["Valio, tu jau pirmoje stotelėje. Tikiuosi, Tau įdomu :)","Puiku, tu jau antroje stotelėje. Paslaptis po truputį aiškėja!","Valio, tu jau trečioje stotelėje. Tikiuosi, Tau įdomu :)","Ketvirta stotelė pasiekta. Miestelis turi daugiau paslapčių, nei atrodė, tiesa?","Penkta stotelė! Čia jau beveik tikras Semeliškių detektyvo lygis.","Šešta stotelė. Dar truputį, ir finalas bus ranka pasiekiamas.","Septinta stotelė. Išlaikyk tempą – paslaptis beveik atrakinta.","Finišo stotelė! Pasiruošk fanfaroms, maršui ir fejerverkams!"];
+let state={started:false,stage:0,start:0,tick:null,player:null,playerMarker:null,geoStarted:false,questions:[]};
+let mainMap=null;
+let qrScanner=null;
+
+const $ = (id) => document.getElementById(id);
+
+function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function norm(s){return (s||"").toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[.,!?]/g,"").replace(/\s+/g," ")}
+function maskEmail(e){const parts=(e||"").toLowerCase().split("@");const u=parts[0]||"";const d=parts[1]||"***";return (u?u[0]+"***":"***")+"@"+d.replace(/^(.).*(\..+)$/,"$1***$2")}
+function fmt(ms){let s=Math.floor(ms/1000),m=Math.floor(s/60);s%=60;return String(m).padStart(2,"0")+":"+String(s).padStart(2,"0")}
+function scrollToId(id){const el=$(id); if(el) el.scrollIntoView({behavior:"smooth",block:"start"});}
+function updateTimer(){if(state.started) $("timer").textContent=fmt(Date.now()-state.start)}
+function popupHtml(p){return `<b>${p.title}</b>${p.img?`<img class="place-photo" src="${p.img}" alt="${p.title}">`:``}<p class="desc">${p.desc}</p>`}
+function initMap(){
+ mainMap=L.map("mainMap").setView([54.6665,24.6605],14);
+ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(mainMap);
+ PLACES.forEach(p=>L.marker([p.lat,p.lng]).addTo(mainMap).bindPopup(popupHtml(p)));
+}
+function initPlayerLocation(){
+ if(state.geoStarted || !navigator.geolocation || !mainMap) return;
+ state.geoStarted=true;
+ navigator.geolocation.watchPosition(pos=>{
+   const lat=pos.coords.latitude,lng=pos.coords.longitude;
+   if(!state.playerMarker){
+     const icon=L.divIcon({className:"",html:"<div class='player-dot'></div>",iconSize:[18,18],iconAnchor:[9,9]});
+     state.playerMarker=L.marker([lat,lng],{icon}).addTo(mainMap).bindPopup("Tu esi čia");
+   }else{
+     state.playerMarker.setLatLng([lat,lng]);
+   }
+ },()=>{},{enableHighAccuracy:true,maximumAge:2000});
+}
+function showQuestion(){
+ const q=state.questions[state.stage % state.questions.length];
+ $("stageLabel").textContent="Stotelė "+(state.stage+1)+" / 8";
+ $("gameTitle").textContent="Klausimas";
+ $("question").textContent=q.q;
+ $("answer").value="";
+ $("feedback").textContent="";
+ $("hintBox").classList.add("hidden");
+ $("qrBox").classList.add("hidden");
+ $("qrBox").classList.remove("active-object");
+ $("scanBtn").classList.add("hidden");
+ $("checkBtn").disabled=false;
+}
+function saveStat(done=false){
+ const list=JSON.parse(localStorage.semStats||"[]");
+ list.push({v:state.player.initial,e:state.player.masked,t:$("timer").textContent,done,date:new Date().toLocaleString("lt-LT")});
+ localStorage.semStats=JSON.stringify(list);
+ renderStats();
+}
+function renderStats(){
+ const statsEl=$("stats");
+ if(!statsEl) return;
+ const list=JSON.parse(localStorage.semStats||"[]");
+ statsEl.innerHTML=list.length?`<table><tr><th>Vardas</th><th>El. paštas</th><th>Laikas</th><th>Statusas</th><th>Data</th></tr>${list.map(r=>`<tr><td>${r.v}.</td><td>${r.e}</td><td>${r.t}</td><td>${r.done?"Baigė":"Pradėjo"}</td><td>${r.date}</td></tr>`).join("")}</table>`:"Statistikos dar nėra.";
+}
+function startGame(e){
+ e.preventDefault();
+ const name=$("playerName").value.trim();
+ const email=$("playerEmail").value.trim();
+ if(!name || !email) return;
+ state.player={name,initial:name[0].toUpperCase(),masked:maskEmail(email)};
+ state.questions=shuffle(QUESTIONS_SOURCE);
+ state.started=true;
+ state.stage=0;
+ state.start=Date.now();
+ clearInterval(state.tick);
+ state.tick=setInterval(updateTimer,1000);
+ $("playerLabel").textContent=state.player.initial+". / "+state.player.masked;
+ ["registerSection","introBlock","titleBlock","flowBlock","statsSection"].forEach(id=>{const el=$(id); if(el) el.style.display="none";});
+ $("game").classList.remove("hidden");
+ saveStat(false);
+ showQuestion();
+ initPlayerLocation();
+ setTimeout(()=>{mainMap.invalidateSize(); scrollToId("game");},250);
+}
+function checkAnswer(){
+ const q=state.questions[state.stage % state.questions.length];
+ const correct=q.a.some(a=>norm(a)===norm($("answer").value));
+ if(!correct){
+   $("feedback").innerHTML='<p style="color:#b02020;font-weight:900">Dar ne. Bandyk dar kartą.</p>';
+   scrollToId("feedback");
+   return;
+ }
+ $("feedback").innerHTML='<p style="color:#087236;font-weight:900">Teisingai! Dabar ieškok QR kodo pagal užuominą ir nuskenuok jį 👀</p>';
+ $("hintBox").textContent=HINTS[state.stage];
+ $("hintBox").classList.remove("hidden");
+ $("scanBtn").classList.remove("hidden");
+ $("checkBtn").disabled=true;
+ setTimeout(()=>scrollToId("hintBox"),100);
+}
+function expectedQrCode(){return QR_CODES[state.stage] || ("SEM-"+(state.stage+1));}
+function normalizeQrText(text){
+ text=String(text||"").trim();
+ try{
+   const url=new URL(text);
+   const station=url.searchParams.get("qr") || url.searchParams.get("station") || url.hash.replace("#","");
+   if(station) return station.toUpperCase();
+ }catch(e){}
+ return text.toUpperCase();
+}
+function openQrScanner(){
+ const modal=$("scannerModal"), err=$("scanError"), input=$("manualQrCode"), reader=$("qrReader");
+ modal.classList.remove("hidden");
+ err.classList.add("hidden");
+ input.value="";
+ reader.innerHTML="";
+ const onSuccess=(decodedText)=>{
+   const code=normalizeQrText(decodedText);
+   if(code===expectedQrCode()){
+     stopQrScanner();
+     modal.classList.add("hidden");
+     unlockStation();
+   }else{
+     err.textContent="Šis QR kodas netinka šiai stotelei. Ieškok kodo pagal gautą užuominą.";
+     err.classList.remove("hidden");
+   }
+ };
+ if(window.Html5Qrcode){
+   qrScanner=new Html5Qrcode("qrReader");
+   qrScanner.start({facingMode:"environment"},{fps:10,qrbox:{width:240,height:240}},onSuccess,()=>{}).catch(()=>{
+     err.textContent="Kameros nepavyko paleisti. Patikrink, ar puslapis atidarytas per HTTPS ir ar leista naudoti kamerą. Gali įrašyti kodą ranka.";
+     err.classList.remove("hidden");
+   });
+ }else{
+   err.textContent="QR skenerio biblioteka neužsikrovė. Patikrink interneto ryšį arba įrašyk kodą ranka.";
+   err.classList.remove("hidden");
+ }
+}
+function stopQrScanner(){
+ if(qrScanner){
+   qrScanner.stop().catch(()=>{}).finally(()=>{try{qrScanner.clear();}catch(e){} qrScanner=null;});
+ }
+}
+function unlockStation(){
+ const p=PLACES[state.stage];
+ const box=$("qrBox");
+ box.classList.remove("hidden");
+ box.classList.add("active-object");
+ box.innerHTML=`<div class="big">${stationTexts[state.stage]}</div><h2 style="margin-top:14px">${p.title}</h2>${p.img?`<img class="qr-photo" src="${p.img}" alt="${p.title}">`:``}<p class="desc">${p.desc}</p><button class="btn gold" id="nextBtn" type="button">${state.stage===7?"Baigti žaidimą":"Gauti kitą klausimą"}</button>`;
+ setTimeout(()=>scrollToId("qrBox"),100);
+ $("nextBtn").onclick=()=>{
+   if(state.stage===7) finish();
+   else {
+     state.stage++;
+     showQuestion();
+     setTimeout(()=>scrollToId("game"),100);
+   }
+ };
+}
+function xmlEscape(str){return String(str||"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&apos;"}[ch]));}
+function makeCertificateSvg(name,time){
+ const date=new Date().toLocaleDateString("lt-LT");
+ return `<svg class="cert-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1536 1024" width="1536" height="1024">
+  <image href="assets/sertifikatas.png" x="0" y="0" width="1536" height="1024" preserveAspectRatio="xMidYMid slice"/>
+  <rect x="455" y="520" width="630" height="135" rx="18" fill="#fffef9" opacity="0.97"/>
+  <rect x="560" y="790" width="210" height="90" rx="12" fill="#fffef9" opacity="0.94"/>
+  <rect x="790" y="790" width="240" height="90" rx="12" fill="#fffef9" opacity="0.94"/>
+  <text x="768" y="590" text-anchor="middle" font-family="Georgia, serif" font-size="62" font-style="italic" font-weight="700" fill="#087236">${xmlEscape(name)}</text>
+  <line x1="505" y1="628" x2="1030" y2="628" stroke="#172016" stroke-width="3"/>
+  <text x="605" y="833" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#172016">REZULTATAS</text>
+  <text x="605" y="864" font-family="Arial, sans-serif" font-size="28" font-weight="900" fill="#000">${xmlEscape(time)}</text>
+  <text x="860" y="833" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#172016">DATA</text>
+  <text x="860" y="864" font-family="Arial, sans-serif" font-size="28" font-weight="900" fill="#000">${xmlEscape(date)}</text>
+ </svg>`;
+}
+function downloadCertificatePng(){
+ const svg=makeCertificateSvg(state.player.name,$("timer").textContent);
+ const blob=new Blob([svg],{type:"image/svg+xml;charset=utf-8"});
+ const url=URL.createObjectURL(blob);
+ const img=new Image();
+ img.onload=function(){
+   const canvas=document.createElement("canvas");
+   canvas.width=1536; canvas.height=1024;
+   const ctx=canvas.getContext("2d");
+   ctx.fillStyle="#fff"; ctx.fillRect(0,0,canvas.width,canvas.height);
+   ctx.drawImage(img,0,0);
+   URL.revokeObjectURL(url);
+   canvas.toBlob(function(pngBlob){
+     const a=document.createElement("a");
+     const clean=(state.player.name||"zaidejas").replace(/[^\p{L}\p{N}]+/gu,"_").replace(/^_+|_+$/g,"") || "zaidejas";
+     a.href=URL.createObjectURL(pngBlob);
+     a.download="Semeliskes_escape_room_sertifikatas_"+clean+".png";
+     document.body.appendChild(a); a.click();
+     setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+   },"image/png");
+ };
+ img.onerror=function(){
+   const a=document.createElement("a");
+   a.href=url; a.download="Semeliskes_escape_room_sertifikatas.svg";
+   document.body.appendChild(a); a.click();
+   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},500);
+ };
+ img.src=url;
+}
+function finish(){
+ clearInterval(state.tick);
+ updateTimer();
+ saveStat(true);
+ $("game").innerHTML=`<div class="card certificate"><h1>🏆 Sveikiname!</h1><p>Įveikei „Escape Room: Semeliškių paslaptys“!</p><div class="cert-wrap">${makeCertificateSvg(state.player.name,$("timer").textContent)}<div class="download-row"><button class="btn" id="downloadCertBtn" type="button">Atsisiųsti sertifikatą PNG</button></div></div></div>`;
+ $("downloadCertBtn").onclick=downloadCertificatePng;
+ scrollToId("game");
+ confetti();
+}
+function confetti(){
+ let c=document.createElement("div");c.className="confetti";document.body.appendChild(c);
+ for(let i=0;i<80;i++){let s=document.createElement("span");s.textContent=["🎉","✨","🎆","🏆"][i%4];s.style.left=Math.random()*100+"vw";s.style.animationDelay=Math.random()*1.2+"s";c.appendChild(s)}
+ setTimeout(()=>c.remove(),4200);
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+ initMap();
+ renderStats();
+ $("startForm").addEventListener("submit",startGame);
+ $("checkBtn").addEventListener("click",checkAnswer);
+ $("scanBtn").addEventListener("click",openQrScanner);
+ $("toggleStatsBtn").addEventListener("click",()=>{
+   $("statsWrap").classList.toggle("hidden");
+   $("toggleStatsBtn").textContent=$("statsWrap").classList.contains("hidden")?"Rodyti statistiką":"Slėpti statistiką";
+ });
+ $("closeScannerBtn").addEventListener("click",()=>{stopQrScanner();$("scannerModal").classList.add("hidden");});
+ $("manualQrBtn").addEventListener("click",()=>{
+   const code=normalizeQrText($("manualQrCode").value);
+   if(code===expectedQrCode()){stopQrScanner();$("scannerModal").classList.add("hidden");unlockStation();}
+   else{$("scanError").textContent="Įrašytas kodas netinka šiai stotelei. Turi būti rastas teisingas QR kodas.";$("scanError").classList.remove("hidden");}
+ });
+ setTimeout(()=>mainMap.invalidateSize(),300);
+});
+</script>
+</body>
+</html>
